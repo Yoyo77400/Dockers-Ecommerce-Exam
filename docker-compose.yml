@@ -1,0 +1,89 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    environment:
+      VITE_PRODUCT_SERVICE_URL: http://product-service:3000
+      VITE_AUTH_SERVICE_URL: http://auth-service:3001
+      VITE_ORDER_SERVICE_URL: http://order-service:3002
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      target: development
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo-auth:27017/auth
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: development
+    volumes:
+      - ./services/auth-service:/app
+      - auth_node_modules:/app/node_modules
+    depends_on:
+      - mongo-auth
+
+  product-service:
+    build:
+      context: ./services/product-service
+      target: development
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo-product:27017/ecommerce
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: development
+    volumes:
+      - ./services/product-service:/app
+      - product_node_modules:/app/node_modules
+    depends_on:
+      - mongo-product
+
+  order-service:
+    build:
+      context: ./services/order-service
+      target: development
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://mongo-order:27017/orders
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: development
+      VITE_PRODUCT_SERVICE_URL: http://product-service:3000
+    volumes:
+      - ./services/order-service:/app
+      - order_node_modules:/app/node_modules
+    depends_on:
+      - mongo-order
+      - product-service
+
+  mongo-auth:
+    image: mongo:7
+    volumes:
+      - mongo_auth_data:/data/db
+
+  mongo-product:
+    image: mongo:7
+    volumes:
+      - mongo_product_data:/data/db
+
+  mongo-order:
+    image: mongo:7
+    volumes:
+      - mongo_order_data:/data/db
+
+volumes:
+  frontend_node_modules:
+  auth_node_modules:
+  product_node_modules:
+  order_node_modules:
+  mongo_auth_data:
+  mongo_product_data:
+  mongo_order_data:
