@@ -1,0 +1,207 @@
+services:
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./infra/nginx/reverse-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend-prod
+      - frontend-dev
+    networks:
+      - proxy
+
+  frontend-prod:
+    build:
+      context: ./frontend
+      target: production
+    depends_on:
+      - auth-service-prod
+      - product-service-prod
+      - order-service-prod
+    networks:
+      - proxy
+      - prod
+
+  auth-service-prod:
+    build:
+      context: ./services/auth-service
+      target: production
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo-auth-prod:27017/auth
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: production
+    depends_on:
+      - mongo-auth-prod
+    networks:
+      prod:
+        aliases:
+          - auth-service
+
+  product-service-prod:
+    build:
+      context: ./services/product-service
+      target: production
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo-product-prod:27017/ecommerce
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: production
+    depends_on:
+      - mongo-product-prod
+    networks:
+      prod:
+        aliases:
+          - product-service
+
+  order-service-prod:
+    build:
+      context: ./services/order-service
+      target: production
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://mongo-order-prod:27017/orders
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: production
+      VITE_PRODUCT_SERVICE_URL: http://product-service:3000
+    depends_on:
+      - mongo-order-prod
+      - product-service-prod
+    networks:
+      prod:
+        aliases:
+          - order-service
+
+  mongo-auth-prod:
+    image: mongo:7
+    volumes:
+      - mongo_auth_prod_data:/data/db
+    networks:
+      - prod
+
+  mongo-product-prod:
+    image: mongo:7
+    volumes:
+      - mongo_product_prod_data:/data/db
+    networks:
+      - prod
+
+  mongo-order-prod:
+    image: mongo:7
+    volumes:
+      - mongo_order_prod_data:/data/db
+    networks:
+      - prod
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      target: production
+    depends_on:
+      - auth-service-dev
+      - product-service-dev
+      - order-service-dev
+    networks:
+      - proxy
+      - dev
+
+  auth-service-dev:
+    build:
+      context: ./services/auth-service
+      target: development
+    command: ["npm", "run", "dev"]
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo-auth-dev:27017/auth
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: development
+    volumes:
+      - ./services/auth-service:/app
+      - auth_dev_node_modules:/app/node_modules
+    depends_on:
+      - mongo-auth-dev
+    networks:
+      dev:
+        aliases:
+          - auth-service
+
+  product-service-dev:
+    build:
+      context: ./services/product-service
+      target: development
+    command: ["npm", "run", "dev"]
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo-product-dev:27017/ecommerce
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: development
+    volumes:
+      - ./services/product-service:/app
+      - product_dev_node_modules:/app/node_modules
+    depends_on:
+      - mongo-product-dev
+    networks:
+      dev:
+        aliases:
+          - product-service
+
+  order-service-dev:
+    build:
+      context: ./services/order-service
+      target: development
+    command: ["npm", "run", "dev"]
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://mongo-order-dev:27017/orders
+      JWT_SECRET: efrei_super_pass
+      NODE_ENV: development
+      VITE_PRODUCT_SERVICE_URL: http://product-service:3000
+    volumes:
+      - ./services/order-service:/app
+      - order_dev_node_modules:/app/node_modules
+    depends_on:
+      - mongo-order-dev
+      - product-service-dev
+    networks:
+      dev:
+        aliases:
+          - order-service
+
+  mongo-auth-dev:
+    image: mongo:7
+    volumes:
+      - mongo_auth_dev_data:/data/db
+    networks:
+      - dev
+
+  mongo-product-dev:
+    image: mongo:7
+    volumes:
+      - mongo_product_dev_data:/data/db
+    networks:
+      - dev
+
+  mongo-order-dev:
+    image: mongo:7
+    volumes:
+      - mongo_order_dev_data:/data/db
+    networks:
+      - dev
+
+networks:
+  proxy:
+  prod:
+  dev:
+
+volumes:
+  mongo_auth_prod_data:
+  mongo_product_prod_data:
+  mongo_order_prod_data:
+  mongo_auth_dev_data:
+  mongo_product_dev_data:
+  mongo_order_dev_data:
+  frontend_dev_node_modules:
+  auth_dev_node_modules:
+  product_dev_node_modules:
+  order_dev_node_modules:
