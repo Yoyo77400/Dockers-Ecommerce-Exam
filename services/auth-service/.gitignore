@@ -2,3 +2,8 @@ node_modules/
 coverage/
 package-lock.json
 gl-code-quality-report.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
